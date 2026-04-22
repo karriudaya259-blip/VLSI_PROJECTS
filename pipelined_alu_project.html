@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project: 3‑Stage Pipelined 8‑bit ALU</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #ffffff;
+            color: #1e2a3e;
+            line-height: 1.6;
+        }
+        h1 { color: #0056b3; border-bottom: 3px solid #0056b3; padding-bottom: 10px; }
+        h2 { color: #003d80; margin-top: 30px; }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .screenshot {
+            margin: 30px 0;
+            text-align: center;
+        }
+        img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .note {
+            background: #e7f3ff;
+            border-left: 5px solid #0056b3;
+            padding: 10px 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>3‑Stage Pipelined 8‑bit ALU</h1>
+    <p><strong>Operations:</strong> Add, Subtract, AND, OR, XOR | <strong>Pipeline stages:</strong> Fetch → Execute → Writeback</p>
+
+    <h2>📁 Design (<code>pipelined_alu.v</code>)</h2>
+    <pre><code>module pipelined_alu #(WIDTH=8) (
+    input clk, rst,
+    input [WIDTH-1:0] a, b,
+    input [2:0] op,
+    output reg [WIDTH-1:0] result
+);
+    reg [WIDTH-1:0] a_reg, b_reg;
+    reg [2:0] op_reg;
+    reg [WIDTH-1:0] exec_result;
+
+    // Stage 1: Fetch inputs
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin a_reg <= 0; b_reg <= 0; op_reg <= 0; end
+        else begin a_reg <= a; b_reg <= b; op_reg <= op; end
+    end
+
+    // Stage 2: Execute ALU operation
+    always @(*) begin
+        case (op_reg)
+            3'b000: exec_result = a_reg + b_reg;
+            3'b001: exec_result = a_reg - b_reg;
+            3'b010: exec_result = a_reg & b_reg;
+            3'b011: exec_result = a_reg | b_reg;
+            3'b100: exec_result = a_reg ^ b_reg;
+            default: exec_result = 0;
+        endcase
+    end
+
+    // Stage 3: Write back result
+    always @(posedge clk or posedge rst) begin
+        if (rst) result <= 0;
+        else result <= exec_result;
+    end
+endmodule</code></pre>
+
+    <h2>🧪 Testbench (<code>pipelined_alu_tb.v</code>)</h2>
+    <pre><code>`timescale 1ns/1ps
+module pipelined_alu_tb;
+    reg clk, rst;
+    reg [7:0] a, b;
+    reg [2:0] op;
+    wire [7:0] result;
+
+    pipelined_alu uut (clk, rst, a, b, op, result);
+
+    always #5 clk = ~clk;
+
+    initial begin
+        $dumpfile("alu.vcd");
+        $dumpvars(0, pipelined_alu_tb);
+        clk = 0; rst = 1; a = 0; b = 0; op = 0; #10;
+        rst = 0;
+        a = 10; b = 3; op = 3'b000; #10;   // add
+        a = 10; b = 3; op = 3'b001; #10;   // sub
+        a = 10; b = 3; op = 3'b010; #10;   // and
+        a = 10; b = 3; op = 3'b011; #10;   // or
+        a = 10; b = 3; op = 3'b100; #10;   // xor
+        #20;
+        $finish;
+    end
+endmodule</code></pre>
+
+    <div class="screenshot">
+        <h2>📸 Simulation Waveform</h2>
+        <img src="alu_waveform.png" alt="GTKWave screenshot of pipelined ALU simulation">
+        <p><em>Waveform showing pipeline behaviour and ALU results.</em></p>
+    </div>
+
+    <div class="note">
+        <strong>How to simulate:</strong><br>
+        <code>iverilog -o alu.vvp pipelined_alu.v pipelined_alu_tb.v</code><br>
+        <code>vvp alu.vvp</code><br>
+        <code>gtkwave alu.vcd</code>
+    </div>
+</body>
+</html>
